@@ -36,6 +36,9 @@ async function startServer() {
   app.get("/healthz", (_req, res) => {
     res.status(200).json({ status: "ok", application: "BMR Bharat Voice AI" });
   });
+  app.get("/api/healthz", (_req, res) => {
+    res.status(200).json({ status: "ok", application: "BMR Bharat Voice AI" });
+  });
   app.get("/manus-routes.json", (_req, res) => {
     res.type("application/json").status(200).send(JSON.stringify({ routes: [
       { path: "/", title: "BMR Bharat Voice AI" },
