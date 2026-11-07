@@ -1,5 +1,6 @@
 BMR AI Production Dependency License Inventory
-https://manusai-paqlweur.manus.space/
+https://bmrvoice-7z6pubaj.manus.space/
+
 
 Generated from the installed production dependencies on 2026-08-26T05:54:21.162Z. This is an engineering inventory, not legal clearance. Review any UNVERIFIED entry, all notices, and the full license text before launch.
 
