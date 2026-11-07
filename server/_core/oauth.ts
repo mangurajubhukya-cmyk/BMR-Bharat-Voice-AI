@@ -4,6 +4,14 @@ import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
+import axios from "axios";
+
+function oauthFailureCategory(error: unknown) {
+  if (axios.isAxiosError(error)) return `oauth_http_${error.response?.status ?? "network"}`;
+  if (error instanceof Error && /session signing secret|production configuration/i.test(error.message)) return "oauth_configuration";
+  if (error instanceof Error && /database|mysql|drizzle/i.test(error.message)) return "database";
+  return "callback_internal";
+}
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -55,7 +63,7 @@ export function registerOAuthRoutes(app: Express) {
       });
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
-        name: userInfo.name || "",
+        name: userInfo.name || "BMR User",
         expiresInMs: ONE_YEAR_MS,
       });
 
@@ -64,7 +72,7 @@ export function registerOAuthRoutes(app: Express) {
 
       res.redirect(302, "/");
     } catch (error) {
-      console.error("[OAuth] Callback failed", error instanceof Error ? error.message : "unknown error");
+      console.error("[OAuth] Callback failed", oauthFailureCategory(error));
       res.redirect(302, "/?oauth_error=callback_failed");
     }
   });

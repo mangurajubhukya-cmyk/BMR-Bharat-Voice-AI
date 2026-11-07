@@ -155,9 +155,9 @@ const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(
 export default defineConfig({
   plugins,
   define: {
-    "import.meta.env.VITE_OAUTH_PORTAL_URL": JSON.stringify(process.env.VITE_OAUTH_PORTAL_URL || "https://manus.im"),
+    "import.meta.env.VITE_OAUTH_PORTAL_URL": JSON.stringify(process.env.VITE_OAUTH_PORTAL_URL || process.env.MANUS_OAUTH_PORTAL_URL || "https://manus.im"),
     "import.meta.env.VITE_APP_ID": JSON.stringify(process.env.VITE_APP_ID || process.env.MANUS_PROJECT_ID || ""),
-    "import.meta.env.VITE_APP_TITLE": JSON.stringify(process.env.VITE_APP_TITLE || "BMR AI Create Account"),
+    "import.meta.env.VITE_APP_TITLE": JSON.stringify(process.env.VITE_APP_TITLE || process.env.MANUS_APP_TITLE || "BMR AI Create Account"),
   },
   resolve: {
     alias: {

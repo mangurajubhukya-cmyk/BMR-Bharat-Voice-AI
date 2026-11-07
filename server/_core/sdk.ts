@@ -46,6 +46,9 @@ class OAuthService {
     code: string,
     state: string
   ): Promise<ExchangeTokenResponse> {
+    if (!ENV.appId || !ENV.oAuthServerUrl) {
+      throw new Error("OAuth production configuration is incomplete");
+    }
     const payload: ExchangeTokenRequest = {
       clientId: ENV.appId,
       grantType: "authorization_code",
@@ -155,6 +158,7 @@ class SDKServer {
 
   private getSessionSecret() {
     const secret = ENV.cookieSecret;
+    if (!secret) throw new Error("OAuth session signing secret is not configured");
     return new TextEncoder().encode(secret);
   }
 
@@ -214,7 +218,9 @@ class SDKServer {
       if (
         !isNonEmptyString(openId) ||
         !isNonEmptyString(appId) ||
-        !isNonEmptyString(name)
+        !isNonEmptyString(name) ||
+        !isNonEmptyString(appId) ||
+        appId !== ENV.appId
       ) {
         console.warn("[Auth] Session payload missing required fields");
         return null;

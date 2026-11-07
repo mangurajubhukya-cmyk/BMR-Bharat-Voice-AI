@@ -1,7 +1,7 @@
 export const ENV = {
   appId: process.env.VITE_APP_ID || process.env.MANUS_PROJECT_ID || "",
-  cookieSecret: process.env.JWT_SECRET || "",
-  databaseUrl: process.env.DATABASE_URL || "",
+  cookieSecret: process.env.JWT_SECRET || process.env.MANUS_JWT_SECRET || "",
+  databaseUrl: process.env.DATABASE_URL || process.env.DRIZZLE_DATABASE_URL || "",
   oAuthServerUrl: process.env.OAUTH_SERVER_URL || process.env.MANUS_OAUTH_API_URL || process.env.MANUS_API_URL || "",
   ownerOpenId: process.env.OWNER_OPEN_ID || "",
   isProduction: process.env.NODE_ENV === "production",
