@@ -71,5 +71,5 @@
 - [x] Restore BMR branding across all visible workspace, plan, checkout, and browser metadata surfaces.
 - [x] Reduce the bottom profile and plan control footprint while retaining plan comparison, billing, and sign-out actions.
 - [x] Validate the BMR brand restoration and compact responsive sidebar, then save and deliver the update.
-- [x] Replace the visible Manus AI Companion account-creation wording with BMR AI Create Account.
-- [x] Validate and deliver the BMR account-creation wording update.
+- [x] Replace the visible Manus AI Companion account-creation wording with BMR Bharat Voice AI.
+- [x] Validate and deliver the BMR Bharat Voice AI account-branding update.
