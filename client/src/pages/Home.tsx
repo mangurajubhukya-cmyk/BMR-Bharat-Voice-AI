@@ -11,6 +11,7 @@ import { companionFailureFeedback } from "@/lib/chatFeedback";
 import { trpc } from "@/lib/trpc";
 import { startLogin } from "@/const";
 import { BMR_PLAN_CATALOG } from "@shared/plans";
+import type { GnaniLanguageCode, GnaniVoice } from "@shared/gnani";
 import { Loader2, MessageCircle, MessageSquarePlus, PanelLeftClose, Pencil, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -53,6 +54,7 @@ export default function Home() {
   );
   const billingStatus = trpc.billing.status.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const voiceTranscription = trpc.voice.transcribe.useMutation();
+  const voiceSynthesis = (trpc.voice as typeof trpc.voice & { synthesize?: { useMutation: () => ReturnType<typeof trpc.voice.transcribe.useMutation> } }).synthesize?.useMutation();
   const activePlan = billingStatus.data?.plan === "bmr_credit_monthly" ? BMR_PLAN_CATALOG.bmr_credit_monthly : billingStatus.data?.plan === "bmr_ultra_monthly" ? BMR_PLAN_CATALOG.bmr_ultra_monthly : BMR_PLAN_CATALOG.free;
 
   useEffect(() => {
@@ -70,7 +72,11 @@ export default function Home() {
     } else if (checkoutState === "cancelled") {
       toast.error("BMR plan checkout cancelled", { description: "No payment was taken. You can continue using your current workspace." });
     }
-    if (checkoutState) window.history.replaceState({}, "", window.location.pathname);
+    const oauthError = new URLSearchParams(window.location.search).get("oauth_error");
+    if (oauthError) {
+      toast.error("Sign-in could not be completed", { description: oauthError === "invalid_state" ? "The sign-in session expired or came from another browser. Please try again." : "Manus sign-in returned an error. Please try again." });
+    }
+    if (checkoutState || oauthError) window.history.replaceState({}, "", window.location.pathname);
   }, []);
 
   const sendMessage = trpc.conversations.send.useMutation({
@@ -138,9 +144,14 @@ export default function Home() {
     setActiveConversationId(null);
   }
 
-  async function transcribeVoice(audio: { audioBase64: string; mimeType: "audio/webm" | "audio/ogg" | "audio/wav" | "audio/mpeg" | "audio/mp4" }) {
+  async function transcribeVoice(audio: { audioBase64: string; mimeType: "audio/wav" | "audio/ogg" | "audio/mpeg" | "audio/mp4" | "audio/flac" | "audio/aac" | "audio/x-m4a"; languageCode: GnaniLanguageCode }) {
     const result = await voiceTranscription.mutateAsync(audio);
     return result.text;
+  }
+
+  async function synthesizeVoice(input: { text: string; voice: GnaniVoice; language: GnaniLanguageCode | "auto"; speed: number }) {
+    if (!voiceSynthesis) throw new Error("Gnani voice playback is not configured.");
+    return voiceSynthesis.mutateAsync(input);
   }
 
   function startProCheckout() {
@@ -234,7 +245,7 @@ export default function Home() {
       <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[radial-gradient(circle_at_78%_12%,rgba(199,243,107,.08),transparent_26%),#10120f]">
         <header className="flex h-[78px] shrink-0 items-center justify-between border-b border-white/10 px-5 sm:px-8"><div className="flex items-center gap-3"><button type="button" aria-label="Open chat history" onClick={() => setIsMobileNavOpen(true)} className="grid size-8 place-items-center border border-[#c7f36b]/45 bg-[#c7f36b]/10 text-[#c7f36b] transition-colors hover:bg-[#c7f36b]/20 lg:hidden"><PanelLeftClose className="size-4" /></button><div><p className="font-mono text-[9px] tracking-[.13em] text-[#c7f36b]">LIVE ANSWER LOOP</p><h1 className="mt-0.5 font-['Space_Grotesk'] text-base font-medium tracking-[-.03em]">{activeConversation.data?.conversation.title ?? "New conversation"}</h1></div></div><div className="hidden items-center gap-2 font-mono text-[9px] tracking-[.1em] text-[#9fa59a] sm:flex"><span className="size-1.5 rounded-full bg-[#c7f36b]" /> MODEL / READY</div></header>
         <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-6 lg:p-8">
-          {activeConversationId !== null && activeConversation.isLoading ? <div className="grid flex-1 place-items-center"><Loader2 className="size-6 animate-spin text-[#c7f36b]" /></div> : <AIChatBox messages={displayMessages} onSendMessage={handleSend} onTranscribeAudio={transcribeVoice} isLoading={sendMessage.isPending} height="auto" className="mx-auto min-h-0 w-full max-w-5xl flex-1 overflow-hidden rounded-sm border-white/12 bg-[#171a15]/90 shadow-[0_24px_80px_rgba(0,0,0,.22)]" emptyStateMessage="Start a new chat in any language. Speak or type naturally and BMR will answer in that same language." suggestedPrompts={["Plan a Client Win Sprint for my service", "Turn this idea into a content brief", "Translate this reply into Telugu", "Help me respond to a customer clearly"]} speechLocale="auto" autoFocus={activeConversationId === null} planContext={activeConversationId === null ? { name: activePlan.name, allowance: activePlan.allowance, onViewPlans: () => setLocation("/plans") } : undefined} />}
+          {activeConversationId !== null && activeConversation.isLoading ? <div className="grid flex-1 place-items-center"><Loader2 className="size-6 animate-spin text-[#c7f36b]" /></div> : <AIChatBox messages={displayMessages} onSendMessage={handleSend} onTranscribeAudio={transcribeVoice} onSynthesizeAudio={voiceSynthesis ? synthesizeVoice : undefined} isLoading={sendMessage.isPending} height="auto" className="mx-auto min-h-0 w-full max-w-5xl flex-1 overflow-hidden rounded-sm border-white/12 bg-[#171a15]/90 shadow-[0_24px_80px_rgba(0,0,0,.22)]" emptyStateMessage="Start a new chat in any language. Speak or type naturally and BMR will answer in that same language." suggestedPrompts={["Plan a Client Win Sprint for my service", "Turn this idea into a content brief", "Translate this reply into Telugu", "Help me respond to a customer clearly"]} speechLocale="auto" autoFocus={activeConversationId === null} planContext={activeConversationId === null ? { name: activePlan.name, allowance: activePlan.allowance, onViewPlans: () => setLocation("/plans") } : undefined} />}
           <p className="mx-auto mt-3 flex w-full max-w-5xl items-center gap-2 px-1 font-mono text-[9px] leading-4 tracking-[.06em] text-[#777e73]"><ShieldCheck className="size-3 text-[#c7f36b]" /> RESPONSES ARE GENERATED BY A LIVE MODEL. VERIFY IMPORTANT OUTPUTS BEFORE ACTING.</p>
         </div>
       </section>

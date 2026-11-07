@@ -32,6 +32,18 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  app.set("trust proxy", true);
+  app.get("/healthz", (_req, res) => {
+    res.status(200).json({ status: "ok", application: "BMR Bharat Voice AI" });
+  });
+  app.get("/manus-routes.json", (_req, res) => {
+    res.type("application/json").status(200).send(JSON.stringify({ routes: [
+      { path: "/", title: "BMR Bharat Voice AI" },
+      { path: "/plans", title: "BMR plans" },
+      { path: "/checkout/:planId", title: "BMR checkout" },
+      { path: "/404", title: "Not found" },
+    ] }));
+  });
   // Stripe requires the unparsed request body for signature verification, so this must precede express.json().
   registerStripeWebhook(app);
   // Configure body parser with larger size limit for file uploads

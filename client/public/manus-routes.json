@@ -1,0 +1,1 @@
+{"routes":[{"path":"/","title":"BMR Bharat Voice AI"},{"path":"/plans","title":"BMR plans"},{"path":"/checkout/:planId","title":"BMR checkout"},{"path":"/404","title":"Not found"}]}

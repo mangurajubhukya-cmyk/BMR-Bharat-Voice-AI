@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { AlertCircle, Loader2, Mic, MicOff, Send, Sparkles, Square, User, Volume2 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
+import { GNANI_LANGUAGES, GNANI_TTS_VOICES, type GnaniLanguageCode, type GnaniVoice } from "@shared/gnani";
 
 export type Message = {
   role: "system" | "user" | "assistant";
@@ -30,6 +31,23 @@ type SpeechRecognitionLike = {
 };
 type RecognitionConstructor = new () => SpeechRecognitionLike;
 
+async function convertToWav(blob: Blob): Promise<Blob> {
+  if (blob.type === "audio/wav") return blob;
+  const AudioContextConstructor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) throw new Error("This browser cannot convert the microphone format to WAV. You can still type your message.");
+  const context = new AudioContextConstructor();
+  try {
+    const decoded = await context.decodeAudioData(await blob.arrayBuffer());
+    const samples = decoded.getChannelData(0);
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+    const write = (offset: number, value: string) => { for (let index = 0; index < value.length; index += 1) view.setUint8(offset + index, value.charCodeAt(index)); };
+    write(0, "RIFF"); view.setUint32(4, 36 + samples.length * 2, true); write(8, "WAVE"); write(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true); view.setUint32(24, decoded.sampleRate, true); view.setUint32(28, decoded.sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true); write(36, "data"); view.setUint32(40, samples.length * 2, true);
+    for (let index = 0; index < samples.length; index += 1) { const sample = Math.max(-1, Math.min(1, samples[index])); view.setInt16(44 + index * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true); }
+    return new Blob([buffer], { type: "audio/wav" });
+  } finally { await context.close(); }
+}
+
 export type AIChatBoxProps = {
   messages: Message[];
   onSendMessage: (content: string) => void;
@@ -42,7 +60,8 @@ export type AIChatBoxProps = {
   speechLocale?: string;
   autoFocus?: boolean;
   planContext?: { name: string; allowance: string; onViewPlans?: () => void };
-  onTranscribeAudio?: (audio: { audioBase64: string; mimeType: "audio/webm" | "audio/ogg" | "audio/wav" | "audio/mpeg" | "audio/mp4" }) => Promise<string>;
+  onTranscribeAudio?: (audio: { audioBase64: string; mimeType: "audio/wav" | "audio/ogg" | "audio/mpeg" | "audio/mp4" | "audio/flac" | "audio/aac" | "audio/x-m4a"; languageCode: GnaniLanguageCode }) => Promise<string>;
+  onSynthesizeAudio?: (input: { text: string; voice: GnaniVoice; language: GnaniLanguageCode | "auto"; speed: number }) => Promise<{ audioBase64: string; mimeType: "audio/wav" }>;
 };
 
 export function AIChatBox({
@@ -58,6 +77,7 @@ export function AIChatBox({
   autoFocus = false,
   planContext,
   onTranscribeAudio,
+  onSynthesizeAudio,
 }: AIChatBoxProps) {
   const [input, setInput] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -67,11 +87,14 @@ export function AIChatBox({
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [startingSpeechIndex, setStartingSpeechIndex] = useState<number | null>(null);
+  const [languageCode, setLanguageCode] = useState<GnaniLanguageCode>("te-IN");
+  const [voice, setVoice] = useState<GnaniVoice>("Suhana");
   const viewportRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recorderStreamRef = useRef<MediaStream | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const displayMessages = messages.filter(message => message.role !== "system");
 
@@ -91,6 +114,7 @@ export function AIChatBox({
     recorderRef.current?.stop();
     recorderStreamRef.current?.getTracks().forEach(track => track.stop());
     window.speechSynthesis?.cancel();
+    audioRef.current?.pause();
   }, []);
 
   useEffect(() => {
@@ -124,20 +148,20 @@ export function AIChatBox({
         setIsRecording(false);
         stream.getTracks().forEach(track => track.stop());
         const rawMime = recorder.mimeType.split(";")[0] || "audio/webm";
-        const mimeType = (["audio/webm", "audio/ogg", "audio/wav", "audio/mpeg", "audio/mp4"].includes(rawMime) ? rawMime : "audio/webm") as "audio/webm" | "audio/ogg" | "audio/wav" | "audio/mpeg" | "audio/mp4";
-        const recording = new Blob(chunks, { type: mimeType });
+        const recording = new Blob(chunks, { type: rawMime });
         if (!recording.size) return setVoiceError("The recording was empty. Please try again or type your message.");
         if (recording.size > 16 * 1024 * 1024) return setVoiceError("The recording is too large. Please use a shorter voice message.");
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
-          reader.onerror = () => reject(new Error("Could not read the recording."));
-          reader.readAsDataURL(recording);
-        });
         try {
           setIsTranscribing(true);
           setVoiceError(null);
-          const transcript = await onTranscribeAudio({ audioBase64: base64, mimeType });
+          const wav = await convertToWav(recording);
+          const wavBase64 = await new Promise<string>((resolve, reject) => {
+            const wavReader = new FileReader();
+            wavReader.onload = () => resolve(String(wavReader.result).split(",")[1] ?? "");
+            wavReader.onerror = () => reject(new Error("Could not prepare the WAV recording."));
+            wavReader.readAsDataURL(wav);
+          });
+          const transcript = await onTranscribeAudio({ audioBase64: wavBase64, mimeType: "audio/wav", languageCode });
           setInput(transcript);
           textareaRef.current?.focus();
         } catch (error) {
@@ -197,7 +221,30 @@ export function AIChatBox({
     recognition.start();
   }
 
-  function toggleSpeech(content: string, index: number) {
+  async function toggleSpeech(content: string, index: number) {
+    if (onSynthesizeAudio) {
+      if (speakingIndex === index || startingSpeechIndex === index) {
+        audioRef.current?.pause();
+        setSpeakingIndex(null);
+        setStartingSpeechIndex(null);
+        return;
+      }
+      setVoiceError(null);
+      setStartingSpeechIndex(index);
+      try {
+        const result = await onSynthesizeAudio({ text: content, voice, language: languageCode, speed: 1 });
+        const audio = new Audio(`data:${result.mimeType};base64,${result.audioBase64}`);
+        audio.onplay = () => { setStartingSpeechIndex(null); setSpeakingIndex(index); };
+        audio.onended = () => setSpeakingIndex(current => current === index ? null : current);
+        audio.onerror = () => { setVoiceError("Gnani voice playback could not start. You can still read the answer."); setStartingSpeechIndex(null); setSpeakingIndex(null); };
+        audioRef.current = audio;
+        await audio.play();
+      } catch (error) {
+        setStartingSpeechIndex(null);
+        setVoiceError(error instanceof Error ? error.message : "Voice playback could not start.");
+      }
+      return;
+    }
     if (!("speechSynthesis" in window)) {
       setVoiceError("Voice playback is not supported by this browser.");
       return;
@@ -260,7 +307,9 @@ export function AIChatBox({
         )}
       </div>
       {voiceError ? <div className="mx-4 mb-1 flex items-start gap-2 border border-amber-300/20 bg-amber-300/5 px-3 py-2 text-xs leading-5 text-amber-100/80"><AlertCircle className="mt-0.5 size-3.5 shrink-0" /> <span>{voiceError}</span><button type="button" className="ml-auto text-[10px] uppercase tracking-[.1em] text-amber-100" onClick={() => setVoiceError(null)}>Dismiss</button></div> : null}
-      <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-white/10 bg-black/10 p-4">
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2 border-t border-white/10 bg-black/10 p-4">
+        {onTranscribeAudio ? <select aria-label="Voice language" value={languageCode} onChange={event => setLanguageCode(event.target.value as GnaniLanguageCode)} className="h-10 rounded-sm border border-white/15 bg-transparent px-2 text-[10px] text-[#c9cdc3]"><option value="te-IN" className="bg-[#171a15]">తెలుగు</option><option value="hi-IN" className="bg-[#171a15]">हिन्दी</option><option value="en-IN" className="bg-[#171a15]">English</option></select> : null}
+        {onSynthesizeAudio ? <select aria-label="Voice output" value={voice} onChange={event => setVoice(event.target.value as GnaniVoice)} className="h-10 rounded-sm border border-white/15 bg-transparent px-2 text-[10px] text-[#c9cdc3]">{Object.entries(GNANI_TTS_VOICES).map(([id, option]) => <option key={id} value={id} className="bg-[#171a15]">{option.label}</option>)}</select> : null}
         <Textarea ref={textareaRef} value={input} onChange={event => setInput(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder={placeholder} className="min-h-10 max-h-32 flex-1 resize-none border-white/15 bg-white/[.025] text-[#ecede5] placeholder:text-[#737a70] focus-visible:ring-[#c7f36b]" rows={1} />
         <Button type="button" variant="outline" onClick={toggleDictation} disabled={isLoading || isTranscribing} className={cn("size-10 shrink-0 rounded-sm border-white/15 bg-transparent p-0 text-[#c9cdc3] hover:bg-white/10 hover:text-[#c7f36b]", (isListening || isRecording) && "border-[#c7f36b]/70 bg-[#c7f36b]/10 text-[#c7f36b]")} aria-label={isRecording ? "Stop voice recording" : isListening ? "Stop voice dictation" : onTranscribeAudio ? "Start automatic voice input" : "Start voice dictation"}>{isRecording || isListening ? <MicOff className="size-4" /> : isTranscribing ? <Loader2 className="size-4 animate-spin" /> : <Mic className="size-4" />}</Button>
         <Button type="submit" disabled={!input.trim() || isLoading} className="size-10 shrink-0 rounded-sm bg-primary p-0 text-primary-foreground hover:bg-[#dafb94]" aria-label="Send message">{isLoading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}</Button>

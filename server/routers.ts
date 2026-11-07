@@ -7,7 +7,9 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { extractReplyText, makeBmrSystemPrompt, makeConversationTitle } from "./chat";
 import { createBmrBillingPortalSession, createBmrCheckoutSession, getBmrSubscriptionSummary, getRequestOrigin } from "./stripe";
-import { transcribeVoiceInput } from "./voice";
+import { ENV } from "./_core/env";
+import { transcribeWithPrisma } from "./gnani-prisma";
+import { synthesizeWithTimbre } from "./gnani-timbre";
 import {
   createConversation,
   createMessage,
@@ -51,12 +53,27 @@ export const appRouter = router({
   voice: router({
     transcribe: protectedProcedure.input(z.object({
       audioBase64: z.string().min(1).max(24_000_000),
-      mimeType: z.enum(["audio/webm", "audio/ogg", "audio/wav", "audio/mpeg", "audio/mp4"]),
+      mimeType: z.enum(["audio/wav", "audio/mpeg", "audio/ogg", "audio/flac", "audio/aac", "audio/mp4", "audio/x-m4a"]),
+      languageCode: z.enum(["te-IN", "hi-IN", "en-IN"]),
     })).mutation(async ({ input }) => {
       try {
-        return await transcribeVoiceInput(input.audioBase64, input.mimeType);
+        if (!ENV.gnaniEnableStt) throw new Error("Gnani speech-to-text is disabled. You can still type your message.");
+        return await transcribeWithPrisma(input.audioBase64, input.mimeType, input.languageCode);
       } catch (error) {
         throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Voice transcription could not be completed." });
+      }
+    }),
+    synthesize: protectedProcedure.input(z.object({
+      text: z.string().trim().min(1).max(4000),
+      voice: z.enum(["Suhana", "Lehara", "Lavanya", "Varuni", "Yukti", "Nalini", "Deepak", "Kaveri", "Pranav", "Poorvi"]),
+      language: z.enum(["te-IN", "hi-IN", "en-IN", "auto"]),
+      speed: z.number().min(0.85).max(1.15),
+    })).mutation(async ({ input }) => {
+      try {
+        if (!ENV.gnaniEnableTts) throw new Error("Gnani voice playback is disabled. Text answers remain available.");
+        return await synthesizeWithTimbre(input.text, input.voice, input.language, input.speed);
+      } catch (error) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Voice playback could not be completed." });
       }
     }),
   }),

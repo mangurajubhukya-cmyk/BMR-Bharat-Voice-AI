@@ -16,17 +16,23 @@ export function registerOAuthRoutes(app: Express) {
     const state = getQueryParam(req, "state");
 
     if (!code || !state) {
-      res.status(400).json({ error: "code and state are required" });
+      res.redirect(302, "/?oauth_error=missing_params");
       return;
     }
 
     // CSRF guard: the nonce in `state` must match the one-time cookie that
     // startLogin set in the browser that began this login. An attacker can
     // forge `state`, but cannot plant this cookie in the victim's browser.
-    const { nonce } = decodeOAuthState(state);
+    let nonce: string | undefined;
+    try {
+      nonce = decodeOAuthState(state).nonce;
+    } catch {
+      res.redirect(302, "/?oauth_error=invalid_state");
+      return;
+    }
     const expectedNonce = parseCookieHeader(req.headers.cookie ?? "")[OAUTH_STATE_COOKIE];
     if (!nonce || nonce !== expectedNonce) {
-      res.status(403).json({ error: "invalid oauth state" });
+      res.redirect(302, "/?oauth_error=invalid_state");
       return;
     }
     res.clearCookie(OAUTH_STATE_COOKIE, { path: "/", secure: true, sameSite: "none" });
@@ -36,7 +42,7 @@ export function registerOAuthRoutes(app: Express) {
       const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
 
       if (!userInfo.openId) {
-        res.status(400).json({ error: "openId missing from user info" });
+        res.redirect(302, "/?oauth_error=missing_identity");
         return;
       }
 
@@ -58,8 +64,8 @@ export function registerOAuthRoutes(app: Express) {
 
       res.redirect(302, "/");
     } catch (error) {
-      console.error("[OAuth] Callback failed", error);
-      res.status(500).json({ error: "OAuth callback failed" });
+      console.error("[OAuth] Callback failed", error instanceof Error ? error.message : "unknown error");
+      res.redirect(302, "/?oauth_error=callback_failed");
     }
   });
 }

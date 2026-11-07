@@ -14,6 +14,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    setupFiles: [path.resolve(templateRoot, "test.setup.ts")],
     include: ["server/**/*.test.ts", "server/**/*.spec.ts", "client/**/*.test.{ts,tsx}", "client/**/*.spec.{ts,tsx}"],
   },
 });
