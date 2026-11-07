@@ -1,0 +1,75 @@
+# Working Application Upgrade Checklist
+
+- [x] Confirm the usable MVP: authenticated AI chat, persistent conversations, and clear error states.
+- [x] Upgrade the static project with backend, database, and user management capability.
+- [x] Inspect the generated full-stack guidance and built-in AI model options.
+- [x] Replace the marketing landing route with a real chat workspace and conversation navigation.
+- [x] Add database tables and backend routes for conversations, messages, and AI responses.
+- [x] Connect the chat composer to an AI model and stream or return usable responses.
+- [x] Persist conversation history and let users create, select, rename, and delete conversations.
+- [x] Test successful, empty, failed, and logged-out interaction paths.
+- [x] Verify responsive behavior, save a checkpoint, and deliver the working update.
+- [x] Make the left sidebar visibly support chat history, selected-chat state, new-chat creation, and profile controls at the bottom.
+- [x] Add microphone dictation to the chat composer with unsupported-browser and permission-denied states.
+- [x] Add assistant voice playback with play, stop, and loading states for completed responses.
+- [x] Test new chat, history selection, profile sign-out, voice input, and voice output paths.
+- [x] Expose the chat-history sidebar, new-chat control, and profile section through a functional mobile drawer.
+- [x] Verify a fully authenticated end-to-end chat: send a prompt, save the answer, and confirm it remains after reload.
+- [x] Run browser checks for empty, failed, and logged-out states, including AI/API failure handling and a missing conversation.
+- [x] Add an explicit voice playback starting state before browser speech begins.
+- [x] Verify new chat, history selection, rename/delete, sign-out, microphone permission paths, and assistant speech playback through visual, live-service, and browser-like interaction checks.
+- [x] Fix the new-chat action so it preserves an intentional empty composer instead of auto-selecting an existing conversation.
+- [x] Verify a protected conversation request fails cleanly without authentication.
+- [x] Add and execute automated coverage for an AI model invocation failure and its user-visible error handling.
+- [x] Add a browser-like workspace test for sidebar history selection, rename/delete, profile sign-out, and logged-out handling.
+- [x] Add a page-level browser-like test for missing-conversation and AI/API failure feedback in the Home workspace.
+- [x] Confirm the production build uses browser-native APIs only and requires no client installation.
+- [x] Provide clear web access and publishing steps for opening the application from any modern browser.
+- [x] Add a concise browser-access note explaining public URL access, optional sign-in, optional microphone permission, and production startup.
+- [x] Rename browser titles, app metadata, and visible workspace branding to BMR AI CHATBOART.
+- [x] Verify the renamed web experience and save a delivery checkpoint.
+- [x] Enable the project Stripe integration and review its generated configuration guidance.
+- [x] Define a clear paid offering and show a browser-ready pricing or subscription entry point.
+- [x] Implement secure checkout initiation and clear success, cancellation, and sign-in states.
+- [x] Add automated coverage for the payment entry flow and verify the Stripe-enabled interface.
+- [x] Save and deliver the Stripe integration update with the required configuration steps documented.
+- [x] Research real user earning workflows, unmet needs, and current AI capabilities relevant to BMR AI CHATBOART.
+- [x] Define three focused, ethical value-creation workflows with clear user outcomes and safe boundaries.
+- [x] Reframe the product experience around differentiated action plans rather than generic chat.
+- [x] Build an actionable paid offering and checkout entry point only after the value proposition is defined.
+- [x] Test the revised outcome-focused product experience and document pricing assumptions for review.
+- [x] Research browser language and speech capabilities for Indian and international users, including Telugu, Hindi, and Marathi.
+- [x] Add a persisted user language preference with English, Telugu, Hindi, Marathi, and an automatic language option.
+- [x] Instruct the live AI workflow to reply in the selected language and retain the selected language in conversation behavior.
+- [x] Upgrade voice input and speech playback to use the selected language with browser support and graceful fallbacks.
+- [x] Add a profile subscription section showing current BMR Pro status, upgrade, and secure Stripe billing-management controls.
+- [x] Add secure Stripe customer-portal and subscription-status server procedures without persisting sensitive payment details.
+- [x] Test language, voice, subscription status, checkout, and portal entry flows across browser-ready states.
+- [x] Save and deliver the global-ready subscription and multilingual update with setup guidance.
+- [x] Define transparent Free Trial, BMR Credit ($5), and BMR Ultra ($18) plan limits and renewal behavior.
+- [x] Add tiered Stripe product definitions and a dedicated in-app plans route with no external-window checkout launch.
+- [x] Route authenticated users to in-app checkout confirmation before securely redirecting the current tab to Stripe Checkout.
+- [x] Fix the New chat action so it always opens a visible, usable empty chat board with the composer ready.
+- [x] Improve the new-chat board with real-world starter actions and clear model/plan context.
+- [x] Add automated coverage for plan navigation, selected-tier checkout, and the corrected new-chat interaction.
+- [x] Test responsive plans, checkout-return, and new-chat behavior, then save and deliver the upgrade.
+- [x] Show the active Free Trial, BMR Credit, or BMR Ultra context and allowance on the new-chat board.
+- [x] Re-run validation, save the plan/new-chat release checkpoint, and deliver the upgrade.
+- [x] Move profile and plan-upgrade controls into a compact account area fixed at the bottom of the workspace navigation.
+- [x] Replace persistent language settings with automatic language matching and an optional language picker only when needed.
+- [x] Strengthen same-language model instructions and browser voice fallback messaging for multilingual speech and typed prompts.
+- [x] Add a clear payment-launch status explaining Stripe sandbox, live verification, and bank-payout onboarding requirements.
+- [x] Test the revised account controls, language behavior, and payment-readiness states, then save and deliver the update.
+- [x] Research Stripe country availability and design country-appropriate global payment onboarding guidance.
+- [x] Select a distinct publish-ready product name and replace the current brand consistently.
+- [x] Audit visible copy, assets, and third-party dependencies for publication-ready intellectual-property safeguards.
+- [x] Add global payment availability and publication-readiness guidance to the product and documentation.
+- [x] Validate the global launch update, save a checkpoint, and deliver the result.
+- [x] Align the automatic-language product behavior with the persisted preference router, tests, and global experience documentation.
+- [x] Replace remaining public BMR copy with the Zynvori AI working brand and flag the name as requiring formal clearance before legal finalization.
+- [x] Inventory third-party packages, fonts, and visual assets; record the publication-relevant license or ownership status.
+- [x] Restore BMR branding across all visible workspace, plan, checkout, and browser metadata surfaces.
+- [x] Reduce the bottom profile and plan control footprint while retaining plan comparison, billing, and sign-out actions.
+- [x] Validate the BMR brand restoration and compact responsive sidebar, then save and deliver the update.
+- [x] Replace the visible Manus AI Companion account-creation wording with BMR AI Create Account.
+- [x] Validate and deliver the BMR account-creation wording update.
